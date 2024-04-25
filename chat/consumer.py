@@ -1,19 +1,46 @@
-# chat/consumers.py
-import json
-
-from channels.generic.websocket import WebsocketConsumer
+from channels.generic.websocket import JsonWebsocketConsumer
 
 
-class ChatConsumer(WebsocketConsumer):
+class ChatConsumer(JsonWebsocketConsumer):
+    """
+    This consumer is used to show user's online status,
+    and send notifications.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(args, kwargs)
+        self.room_name = None
+
     def connect(self):
+        self.user = self.scope["user"]
+        if not self.user.is_authenticated:
+            return
+        self.room_name = "home"
         self.accept()
+        self.send_json(
+            {
+                "type": "welcome_message",
+                "message": "Hey there! You've successfully connected!",
+            }
+        )
 
-    def disconnect(self, close_code):
-        pass
+    def disconnect(self, code):
+        print("Disconnected!")
+        return super().disconnect(code)
 
-    def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-        message = text_data_json["message"]
-        # We can load the model here
-        # and do the inferencing then send the result
-        self.send(text_data=json.dumps({"message": message}))
+    def receive_json(self, content, **kwargs):
+        message_type = content["type"]
+        if message_type == "chat_message":
+            async_to_sync(self.channel_layer.group_send)(
+                self.room_name,
+                {
+                    "type": "chat_message_echo",
+                    "name": content["name"],
+                    "message": content["message"],
+                },
+            )
+        return super().receive_json(content, **kwargs)
+
+    def chat_message_echo(self, event):
+        print(event)
+        self.send_json(event)
