@@ -22,5 +22,6 @@ from .views import CustomObtainAuthTokenView
 urlpatterns = [
     path('admin/', admin.site.urls),
     # path('chat/', include('chat.urls')),
+    path("api/", include("dermit.api_router")),
     path("auth-token/", CustomObtainAuthTokenView.as_view()),
 ]
