@@ -1,6 +1,3 @@
-from django.db import models
-
-# Create your models here.
 import uuid
 
 from django.contrib.auth import get_user_model
@@ -19,7 +16,7 @@ class Conversation(models.Model):
         self.save()
 
     def __str__(self):
-        return f"{self.name} ({self.get_online_count()})"
+        return f"{self.name}"
 
 
 class Message(models.Model):
@@ -33,6 +30,7 @@ class Message(models.Model):
     content = models.CharField(max_length=512)
     timestamp = models.DateTimeField(auto_now_add=True)
     read = models.BooleanField(default=False)
+    response = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return f"From {self.from_user.username} : {self.content} [{self.timestamp}]"
