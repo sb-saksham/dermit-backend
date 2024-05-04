@@ -27,10 +27,10 @@ class Message(models.Model):
     from_user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="messages_from_me"
     )
-    content = models.CharField(max_length=512)
+    content = models.TextField(max_length=512)
     timestamp = models.DateTimeField(auto_now_add=True)
     read = models.BooleanField(default=False)
-    response = models.TextField(null=True, blank=True)
+    is_response = models.BooleanField(default=False)
 
     def __str__(self):
         return f"From {self.from_user.username} : {self.content} [{self.timestamp}]"

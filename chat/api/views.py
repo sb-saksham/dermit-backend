@@ -43,7 +43,7 @@ class CustomObtainAuthTokenView(ObtainAuthToken):
 class ConversationViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
     serializer_class = ConversationSerializer
     queryset = Conversation.objects.none()
-    lookup_field = "name"
+    lookup_field = "uuid"
 
     def get_queryset(self):
         queryset = Conversation.objects.filter(
@@ -61,12 +61,12 @@ class MessageViewSet(ListModelMixin, GenericViewSet):
     pagination_class = MessagePagination
 
     def get_queryset(self):
-        conversation_name = self.request.GET.get("conversation")
+        conversation_uuid = self.request.GET.get("conversation")
         queryset = (
             Message.objects.filter(
                 from_user=self.request.user,
             )
-            .filter(conversation__name=conversation_name)
+            .filter(conversation__uuid=conversation_uuid)
             .order_by("-timestamp")
         )
         return queryset
