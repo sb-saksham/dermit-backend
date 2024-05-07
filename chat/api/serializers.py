@@ -24,8 +24,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "from_user",
             "content",
             "timestamp",
-            "response",
-            "read",
+            "is_response",
         )
 
     def get_conversation(self, obj):
@@ -40,7 +39,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ("id", "name", "last_message")
+        fields = ("id", "name", "last_message", "user")
 
     def get_last_message(self, obj):
         messages = obj.messages.all().order_by("-timestamp")

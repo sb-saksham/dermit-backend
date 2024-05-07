@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
-from rest_framework.mixins import ListModelMixin, RetrieveModelMixin, UpdateModelMixin
+from rest_framework.mixins import ListModelMixin, RetrieveModelMixin, UpdateModelMixin, CreateModelMixin
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -40,10 +40,10 @@ class CustomObtainAuthTokenView(ObtainAuthToken):
         return Response({"token": token.key, "username": user.username})
 
 
-class ConversationViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
+class ConversationViewSet(CreateModelMixin, ListModelMixin, RetrieveModelMixin, GenericViewSet):
     serializer_class = ConversationSerializer
     queryset = Conversation.objects.none()
-    lookup_field = "uuid"
+    lookup_field = "id"
 
     def get_queryset(self):
         queryset = Conversation.objects.filter(
@@ -54,6 +54,10 @@ class ConversationViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
     def get_serializer_context(self):
         return {"request": self.request, "user": self.request.user}
 
+    def create(self, request, *args, **kwargs):
+        self.request.data['user'] = self.request.user.pk
+        return super().create(request, *args, **kwargs)
+
 
 class MessageViewSet(ListModelMixin, GenericViewSet):
     serializer_class = MessageSerializer
@@ -61,12 +65,12 @@ class MessageViewSet(ListModelMixin, GenericViewSet):
     pagination_class = MessagePagination
 
     def get_queryset(self):
-        conversation_uuid = self.request.GET.get("conversation")
+        conversation_id = self.request.GET.get("conversation")
         queryset = (
             Message.objects.filter(
                 from_user=self.request.user,
             )
-            .filter(conversation__uuid=conversation_uuid)
+            .filter(conversation__id=conversation_id)
             .order_by("-timestamp")
         )
         return queryset

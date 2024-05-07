@@ -38,7 +38,7 @@ CORS_ALLOW_HEADERS = (
     "x-requested-with",
     "access-control-allow-origin",
 )
-CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
+CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]
 # Application definition
 
 INSTALLED_APPS = [
@@ -117,15 +117,17 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# REST_FRAMEWORK = {
-#     ""
-# }
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+    ],
+}
 
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": ["localhost", "6789"],
+            "hosts": [("localhost", "6379")],
         },
     },
 }

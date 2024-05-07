@@ -11,12 +11,8 @@ class Conversation(models.Model):
     name = models.CharField(max_length=128)
     user = models.ForeignKey(to=User, blank=True, on_delete=models.CASCADE)
 
-    def join(self, user):
-        self.user = user
-        self.save()
-
     def __str__(self):
-        return f"{self.name}"
+        return f"{self.id}"
 
 
 class Message(models.Model):
@@ -29,7 +25,6 @@ class Message(models.Model):
     )
     content = models.TextField(max_length=512)
     timestamp = models.DateTimeField(auto_now_add=True)
-    read = models.BooleanField(default=False)
     is_response = models.BooleanField(default=False)
 
     def __str__(self):

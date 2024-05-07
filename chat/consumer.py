@@ -19,20 +19,30 @@ class UUIDEncoder(json.JSONEncoder):
 
 class ChatConsumer(JsonWebsocketConsumer):
     """
-    This consumer is used to show user's online status,
-    and send notifications.
+    This consumer is used to relay chat messages and its response
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(args, kwargs)
-        self.room_name = None
+        self.user = None
+        self.conversation_id = None
+        self.conversation = None
 
     def connect(self):
         self.user = self.scope["user"]
         if not self.user.is_authenticated:
             return
-        self.room_name = "home"
         self.accept()
+        self.conversation_id = (
+            f"{self.scope['url_route']['kwargs']['conversation_id']}"
+        )
+        self.conversation, created = Conversation.objects.get_or_create(
+            id=self.conversation_id,
+        )
+        async_to_sync(self.channel_layer.group_add)(
+            self.conversation_id,
+            self.channel_name,
+        )
         self.send_json(
             {
                 "type": "welcome_message",
@@ -52,6 +62,14 @@ class ChatConsumer(JsonWebsocketConsumer):
                 content=content["message"],
                 conversation=self.conversation,
             )
+            async_to_sync(self.channel_layer.group_send)(
+                self.conversation_id,
+                {
+                    "type": "chat_message_echo",
+                    "name": self.user.username,
+                    "message": MessageSerializer(message).data,
+                },
+            )
             # API CALL HERE/MODEL INFERENCE HERE
 
             # response = requests.post({
@@ -62,19 +80,35 @@ class ChatConsumer(JsonWebsocketConsumer):
             #   "Content-Type": "application/json",
             #   "Authorization: f"Bearer {OPENAI_API_KEY}"
             # })
-            # message.response = response
-            # message.save()
-
+            # res_message = Message.objects.create(
+            #                 from_user=self.user,
+            #                 content=response,
+            #                 conversation=self.conversation,
+            #                 is_response=True
+            #             )
+            # async_to_sync(self.channel_layer.group_send)(
+            #     self.conversation_id,
+            #     {
+            #         "type": "chat_message_echo",
+            #         "name": self.user.username,
+            #         "message": MessageSerializer(message).data,
+            #     },
+            # )
+            res_message = Message.objects.create(
+                            from_user=self.user,
+                            content="From my diagnosis you have XYZ disease or symptoms of that. You should perhaps do this or that and avoid doing this.(THIS IS A TEST RESPONSE!)",
+                            conversation=self.conversation,
+                            is_response=True
+                        )
             async_to_sync(self.channel_layer.group_send)(
-                self.conversation_name,
+                self.conversation_id,
                 {
-                    "type": "chat_message_response",
+                    "type": "chat_message_echo",
                     "name": self.user.username,
-                    "message": MessageSerializer(message).data,
+                    "message": MessageSerializer(res_message).data,
                 },
             )
-
         return super().receive_json(content, **kwargs)
 
-    def chat_message_response(self, event):
+    def chat_message_echo(self, event):
         self.send_json(event)
