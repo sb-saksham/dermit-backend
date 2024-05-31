@@ -1,10 +1,17 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from chat.models import Message, Conversation
+from chat.models import Message, Conversation, Image
 
 
 User = get_user_model()
 
+
+class LastMessageSerializer(serializers.Serializer):
+    user = serializers.CharField(read_only=True)
+    ai = serializers.CharField(read_only=True)
+    
+    class Meta:
+        fields=("user", "ai")
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -36,6 +43,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
 class ConversationSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField()
+    # user = serializers.SerializerMethodField()
 
     class Meta:
         model = Conversation
@@ -45,5 +53,21 @@ class ConversationSerializer(serializers.ModelSerializer):
         messages = obj.messages.all().order_by("-timestamp")
         if not messages.exists():
             return None
-        message = messages[0]
-        return MessageSerializer(message).data
+        last_msg = {
+            "user": messages[1].content,
+            "ai": messages[0].content,
+        }
+        
+        return LastMessageSerializer(last_msg).data
+
+    # def get_user(self, obj):
+    #     if obj.messages.first():
+    #         user = obj.messages.first().from_user
+    #         return UserSerializer(user).data
+    #     return
+        
+            
+class ImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Image
+        fields = ("id", "user", "name", "image", "size")

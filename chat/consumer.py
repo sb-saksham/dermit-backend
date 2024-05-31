@@ -7,6 +7,8 @@ from channels.generic.websocket import JsonWebsocketConsumer
 
 from .api.serializers import MessageSerializer
 from .models import Conversation, Message
+from .rag_model import RAG
+from langchain.memory import ConversationBufferMemory
 
 
 class UUIDEncoder(json.JSONEncoder):
@@ -33,9 +35,7 @@ class ChatConsumer(JsonWebsocketConsumer):
         if not self.user.is_authenticated:
             return
         self.accept()
-        self.conversation_id = (
-            f"{self.scope['url_route']['kwargs']['conversation_id']}"
-        )
+        self.conversation_id = f"{self.scope['url_route']['kwargs']['conversation_id']}"
         self.conversation, created = Conversation.objects.get_or_create(
             id=self.conversation_id,
         )
@@ -49,6 +49,8 @@ class ChatConsumer(JsonWebsocketConsumer):
                 "message": "Hey there! You've successfully connected!",
             }
         )
+        self.rag = RAG()
+        self.memory = ConversationBufferMemory(memory_key="chat_history")
 
     def disconnect(self, code):
         print("Disconnected!")
@@ -72,34 +74,29 @@ class ChatConsumer(JsonWebsocketConsumer):
             )
             # API CALL HERE/MODEL INFERENCE HERE
 
-            # response = requests.post({
-            #      "model": "gpt-3.5-turbo",
-            #      "messages": [{"role": "user", "content": content["message"]}],
-            #      "temperature": 0.7
-            # }, {
-            #   "Content-Type": "application/json",
-            #   "Authorization: f"Bearer {OPENAI_API_KEY}"
-            # })
-            # res_message = Message.objects.create(
-            #                 from_user=self.user,
-            #                 content=response,
-            #                 conversation=self.conversation,
-            #                 is_response=True
-            #             )
-            # async_to_sync(self.channel_layer.group_send)(
-            #     self.conversation_id,
-            #     {
-            #         "type": "chat_message_echo",
-            #         "name": self.user.username,
-            #         "message": MessageSerializer(message).data,
-            #     },
-            # )
+            incoming_message = message.content
+
+            query = incoming_message
+
+            agent_exe = self.rag.agent_executor.invoke(
+                {"input": query, "chat_history": self.memory.chat_memory.messages},
+                config={"configurable": {"session_id": "<foo>"}},
+            )
+            rag_response = agent_exe.get("output")
+            print("rag res: ")
+            print(rag_response)
+
+            self.rag.manage_memory(
+                memory=self.memory, query=query, response=rag_response
+            )
+            print("memory: ", self.memory)
+
             res_message = Message.objects.create(
-                            from_user=self.user,
-                            content="From my diagnosis you have XYZ disease or symptoms of that. You should perhaps do this or that and avoid doing this.(THIS IS A TEST RESPONSE!)",
-                            conversation=self.conversation,
-                            is_response=True
-                        )
+                from_user=self.user,
+                content=rag_response,
+                conversation=self.conversation,
+                is_response=True,
+            )
             async_to_sync(self.channel_layer.group_send)(
                 self.conversation_id,
                 {
