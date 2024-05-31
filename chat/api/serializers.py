@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from chat.models import Message, Conversation
+from chat.models import Message, Conversation, Image
 
 
 User = get_user_model()
@@ -67,4 +67,7 @@ class ConversationSerializer(serializers.ModelSerializer):
     #     return
         
             
-        
+class ImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Image
+        fields = ("id", "user", "name", "image", "size")
