@@ -130,10 +130,10 @@ class ComputerVision:
         # results = model.predict(source=input_paths_list, conf=self.conf, imgsz=self.imgsz)
         results = model(source=input_paths_list, conf=self.conf, imgsz=self.imgsz)
 
-        detected_symptoms = {}
+        detected_symptoms = []
 
         for i in range(len(results)):
-            im_name = img_names[i]
+            im_name = f"output_{img_names[i]}"
             print(f"running inference for {im_name}")
             boxes = results[i].boxes
             class_ = boxes.cls
@@ -142,9 +142,11 @@ class ComputerVision:
             keypoints = results[i].keypoints
             probs = results[i].probs
             
-            detected_symptoms[im_name] = {}
-            detected_symptoms[im_name]["np_index"] = list(set(class_.tolist()))
-            detected_symptoms[im_name]["cls_names"] = [self.all_classes[ind] for ind in detected_symptoms[im_name]["np_index"]]
+            symptoms_dict = {}
+            symptoms_dict["img_name"] = im_name
+            symptoms_dict["np_index"] = list(set(class_.tolist()))
+            symptoms_dict["cls_name"] = [self.all_classes[ind] for ind in symptoms_dict["np_index"]]
+            detected_symptoms.append(symptoms_dict)
             
             save_dir = os.path.join(self.output_dir, im_name)
             print(f"Saving {im_name}")

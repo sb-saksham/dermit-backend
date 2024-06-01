@@ -37,7 +37,7 @@ class Image(models.Model):
     ## chat = testing without chatting id, will add later on
     name = models.CharField(max_length=256)
     size = models.BigIntegerField()
-    image = models.ImageField(upload_to=os.path.join(settings.BASE_DIR, "chat", "Images", "Input"), default="")
+    image = models.ImageField(default="")
     
     def __str__(self):
         return f"Image {self.id} - {self.name}"

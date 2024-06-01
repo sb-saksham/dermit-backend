@@ -101,25 +101,32 @@ class ImageViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
         # TODO: Write logic to check if the same user has sent the same images again. consult others
 
         media_root = settings.BASE_DIR
-        image_path = f"{media_root}/chat/Images/Input/{serializer.validated_data['name']}"
+        # image_path = f"{media_root}/chat/Images/Input/{serializer.validated_data['name']}"
+        image_path = f"{media_root}/chat/static/chat/images/input/{serializer.validated_data['name']}"
 
         with open(image_path, "wb") as destination:
             # for chunk in data["image"]:
             for chunk in serializer.validated_data["image"]:
                 destination.write(chunk)
-                
+
         serializer.save(user=self.request.user)
-        
+
     def perform_inference(self, validated_data_list):
-        input_paths = [os.path.join("chat", "Images", "Input", image["name"]) for image in validated_data_list]
         
-        # model_dir = os.path.join(settings.BASE_DIR, "chat", "CV_Model", "best.onnx")
-        output_dir = os.path.join(settings.BASE_DIR, "chat", "Images", "Output")
-        
+        input_paths = [
+            os.path.join("chat", "static", "chat", "images", "input", image["name"])
+            for image in validated_data_list
+        ]
+
+        output_dir = os.path.join(
+            settings.BASE_DIR, "chat", "static", "chat", "images", "output"
+        )
+
         cv_pipeline = ComputerVision(output_dir=output_dir)
         detected_symptoms = cv_pipeline.run_inference(input_paths_list=input_paths)
         print("detected_symptoms")
         print(detected_symptoms)
+        return detected_symptoms
 
     @action(detail=False, methods=["POST"])
     def upload(
@@ -131,7 +138,7 @@ class ImageViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
         print("=" * 100)
         image = request.data.get("image")
         is_valid = len(fileList)
-        
+
         additional_message = ""
         validate_data_list = []
         for image in fileList:  # Doubt- is using loop a right choice
@@ -141,38 +148,58 @@ class ImageViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
                 "image": image,
                 "size": image.size,
             }
-            
-            file_path = os.path.join("chat/Images/Input", validate_data.get("name"))
+
+            file_path = os.path.join(
+                settings.BASE_DIR,
+                "chat",
+                "static",
+                "chat",
+                "images",
+                "input",
+                validate_data.get("name"),
+            )
             if default_storage.exists(file_path):
                 print("path exists")
                 is_valid -= 1
-                
-                additional_message = "Skipped duplicate files, check dashboard for previous inferences"
+
+                additional_message = (
+                    "Skipped duplicate files, check dashboard for previous inferences"
+                )
 
             else:
                 print("path does not exists")
 
                 print(f"serializing {validate_data['name']}")
                 serializer = self.get_serializer(data=validate_data)
-                
+
                 if serializer.is_valid():
                     print(serializer.validated_data)
                     is_valid -= 1  # Doubt - Is there a better logic for this?
-                    self.perform_create(serializer)  # Doubt - is there any other way to get hold of this data || now using validated_data
+                    self.perform_create(
+                        serializer
+                    )  # Doubt - is there any other way to get hold of this data || now using validated_data
                     validate_data_list.append(serializer.validated_data)
                 else:
                     print("serializer.errors: ", serializer.errors)
-                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-                
+                    return Response(
+                        serializer.errors, status=status.HTTP_400_BAD_REQUEST
+                    )
+
         if is_valid == 0:
+            detected_symptoms = []
             print("valid list")
             print(validate_data_list)
             if len(validate_data_list) > 0:
-                self.perform_inference(validate_data_list)
+                detected_symptoms = self.perform_inference(validate_data_list)
             print("valid list end")
+            # return Response(
+            #     f"Image(s) uploaded successfully {additional_message}", status=status.HTTP_201_CREATED
+            # )
             return Response(
-                f"Image(s) uploaded successfully {additional_message}", status=status.HTTP_201_CREATED
+                data=detected_symptoms,
+                status=status.HTTP_201_CREATED,
             )
+            # .status_text(f"Image(s) uploaded successfully {additional_message}")
         else:
             return Response(
                 "Something went wrong try again", status=status.HTTP_400_BAD_REQUEST
