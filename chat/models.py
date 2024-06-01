@@ -1,5 +1,5 @@
 import uuid
-
+import os
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.conf import settings
@@ -35,9 +35,9 @@ class Image(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="images")
     ## chat = testing without chatting id, will add later on
-    name = models.CharField(max_length=25)
+    name = models.CharField(max_length=256)
     size = models.BigIntegerField()
-    image = models.ImageField(upload_to=f"{settings.BASE_DIR}/chat/Images", default="")
+    image = models.ImageField(upload_to=os.path.join(settings.BASE_DIR, "chat", "Images", "Input"), default="")
     
     def __str__(self):
         return f"Image {self.id} - {self.name}"

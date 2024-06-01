@@ -1,0 +1,53 @@
+KeyError                                  Traceback (most recent call last)
+Cell In[1], line 1
+----> 1 from chat import cv
+
+File D:\Machine Learning Projects\DermIT\web-app\dermit-backend\chat\cv.py:59
+     57 cv = CV(model_dir=model_dir, output_dir=output_dir)
+     58 input_dir = os.path.join(settings.BASE_DIR, "chat", "Images", "Input", "sample_input.jpg")        
+---> 59 cv.cv_model(input_dir)
+
+File D:\Machine Learning Projects\DermIT\web-app\dermit-backend\chat\cv.py:30, in CV.cv_model(self, input_path)
+     28 classes = []
+     29 model = YOLO(self.model_dir, task=self.task)
+---> 30 results = model.predict(source=input_path, conf=self.conf, imgsz=self.imgsz)
+     32 for i in range(len(results)):
+     33     boxes = results[i].boxes
+
+File ~\anaconda3\envs\dermit-backend-test\lib\site-packages\ultralytics\engine\model.py:446, in Model.predict(self, source, stream, predictor, **kwargs)
+    444 if not self.predictor:
+    445     self.predictor = predictor or self._smart_load("predictor")(overrides=args, _callbacks=self.callbacks)
+--> 446     self.predictor.setup_model(model=self.model, verbose=is_cli)
+    447 else:  # only update args if predictor is already setup
+    448     self.predictor.args = get_cfg(self.predictor.args, args)
+
+File ~\anaconda3\envs\dermit-backend-test\lib\site-packages\ultralytics\engine\predictor.py:297, in BasePredictor.setup_model(self, model, verbose)
+    295 def setup_model(self, model, verbose=True):
+    296     """Initialize YOLO model with given parameters and set it to evaluation mode."""
+--> 297     self.model = AutoBackend(
+    298         weights=model or self.args.model,
+    299         device=select_device(self.args.device, verbose=verbose),
+    300         dnn=self.args.dnn,
+    301         data=self.args.data,
+    302         fp16=self.args.half,
+    303         batch=self.args.batch,
+    304         fuse=True,
+    305         verbose=verbose,
+    306     )
+    308     self.device = self.model.device  # update device
+    309     self.args.half = self.model.fp16  # update half
+
+File ~\anaconda3\envs\dermit-backend-test\lib\site-packages\torch\utils\_contextlib.py:115, in context_decorator.<locals>.decorate_context(*args, **kwargs)
+    112 @functools.wraps(func)
+    113 def decorate_context(*args, **kwargs):
+    114     with ctx_factory():
+--> 115         return func(*args, **kwargs)
+
+File ~\anaconda3\envs\dermit-backend-test\lib\site-packages\ultralytics\nn\autobackend.py:411, in AutoBackend.__init__(self, weights, device, dnn, data, fp16, batch, fuse, verbose)
+    409     elif k in {"imgsz", "names", "kpt_shape"} and isinstance(v, str):
+    410         metadata[k] = eval(v)
+--> 411 stride = metadata["stride"]
+    412 task = metadata["task"]
+    413 batch = metadata["batch"]
+
+KeyError: 'stride'

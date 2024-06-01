@@ -1,6 +1,8 @@
+import os
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.authtoken.models import Token
+from django.core.files.storage import default_storage
 from rest_framework.decorators import action
 from rest_framework.mixins import (
     ListModelMixin,
@@ -20,6 +22,8 @@ from .paginaters import MessagePagination
 
 from .serializers import MessageSerializer, ConversationSerializer, ImageSerializer
 from .serializers import UserSerializer
+
+from chat.cv import ComputerVision
 
 User = get_user_model()
 
@@ -92,55 +96,84 @@ class ImageViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
     def get_queryset(self):
         return Image.objects.filter(user=self.request.user)
 
-    def perform_create(self, serializer, data):
-        
+    def perform_create(self, serializer):
+
         # TODO: Write logic to check if the same user has sent the same images again. consult others
 
-        image = serializer.save(user=self.request.user)
-
-        # filename with underscores
-        filename = f"{image.name.replace(' ', '_')}"
         media_root = settings.BASE_DIR
-        image_path = f"{media_root}/chat/Images/{filename}"
+        image_path = f"{media_root}/chat/Images/Input/{serializer.validated_data['name']}"
 
         with open(image_path, "wb") as destination:
             # for chunk in data["image"]:
             for chunk in serializer.validated_data["image"]:
                 destination.write(chunk)
-
-        # Update the image object with the saved filename
-        image.filename = filename
-        image.save()
+                
+        serializer.save(user=self.request.user)
+        
+    def perform_inference(self, validated_data_list):
+        input_paths = [os.path.join("chat", "Images", "Input", image["name"]) for image in validated_data_list]
+        
+        # model_dir = os.path.join(settings.BASE_DIR, "chat", "CV_Model", "best.onnx")
+        output_dir = os.path.join(settings.BASE_DIR, "chat", "Images", "Output")
+        
+        cv_pipeline = ComputerVision(output_dir=output_dir)
+        detected_symptoms = cv_pipeline.run_inference(input_paths_list=input_paths)
+        print("detected_symptoms")
+        print(detected_symptoms)
 
     @action(detail=False, methods=["POST"])
-    def upload(self, request): ## This will automatically append a route /upload/ to the registered route of ImageViewSet -> /images/upload/
-                               ## Access POST on this viewset using /images/upload/ in the frontend
+    def upload(
+        self, request
+    ):  ## This will automatically append a route /upload/ to the registered route of ImageViewSet -> /images/upload/
+        ## Access POST on this viewset using /images/upload/ in the frontend
 
         fileList = request.FILES.getlist("image")
-
         print("=" * 100)
         image = request.data.get("image")
         is_valid = len(fileList)
         
-        for image in fileList: # Doubt- is using loop a right choice
+        additional_message = ""
+        validate_data_list = []
+        for image in fileList:  # Doubt- is using loop a right choice
             validate_data = {
-                "user": 3,
-                "name": image.name,
+                "user": request.user.id,
+                "name": f"{self.request.user}_{image.name.replace(' ', '_')}",
                 "image": image,
                 "size": image.size,
             }
-            print(f"serializing {validate_data['name']}")
-            serializer = self.get_serializer(data=validate_data)
-            if serializer.is_valid():
-                print("serial")
-                print(serializer.validated_data)
-                print(serializer.validated_data["image"])
-                is_valid -= 1 # Doubt - Is there a better logic for this?
-                self.perform_create(serializer, data=validate_data) # Doubt - is there any other way to get hold of this data || now using validated_data 
+            
+            file_path = os.path.join("chat/Images/Input", validate_data.get("name"))
+            if default_storage.exists(file_path):
+                print("path exists")
+                is_valid -= 1
+                
+                additional_message = "Skipped duplicate files, check dashboard for previous inferences"
+
             else:
-                print("serializer.errors: ", serializer.errors)
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                print("path does not exists")
+
+                print(f"serializing {validate_data['name']}")
+                serializer = self.get_serializer(data=validate_data)
+                
+                if serializer.is_valid():
+                    print(serializer.validated_data)
+                    is_valid -= 1  # Doubt - Is there a better logic for this?
+                    self.perform_create(serializer)  # Doubt - is there any other way to get hold of this data || now using validated_data
+                    validate_data_list.append(serializer.validated_data)
+                else:
+                    print("serializer.errors: ", serializer.errors)
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                
         if is_valid == 0:
-            return Response("Image(s) uploaded successfully", status=status.HTTP_201_CREATED)
+            print("valid list")
+            print(validate_data_list)
+            if len(validate_data_list) > 0:
+                self.perform_inference(validate_data_list)
+            print("valid list end")
+            return Response(
+                f"Image(s) uploaded successfully {additional_message}", status=status.HTTP_201_CREATED
+            )
         else:
-            return Response("Something went wrong try again", status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                "Something went wrong try again", status=status.HTTP_400_BAD_REQUEST
+            )
