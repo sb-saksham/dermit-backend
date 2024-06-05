@@ -219,7 +219,11 @@ fabric.properties
 chat/Images/Input/*
 chat/Images/Output/*
 chat/CV_Model/*
+chat/static/chat/images/input/*
+chat/static/chat/images/output/*
 
 !chat/Images/Input/.gitkeep
 !chat/Images/Output/.gitkeep
 !chat/CV_Model/.gitkeep
+!chat/static/chat/images/output/.gitkeep
+!chat/static/chat/images/input/.gitkeep

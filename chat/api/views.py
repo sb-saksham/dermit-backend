@@ -141,6 +141,7 @@ class ImageViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
 
         additional_message = ""
         validate_data_list = []
+        
         for image in fileList:  # Doubt- is using loop a right choice
             validate_data = {
                 "user": request.user.id,
@@ -157,11 +158,14 @@ class ImageViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
                 "images",
                 "input",
                 validate_data.get("name"),
-            )
+            )   
+            
             if default_storage.exists(file_path):
                 print("path exists")
                 is_valid -= 1
-
+                
+                
+                
                 additional_message = (
                     "Skipped duplicate files, check dashboard for previous inferences"
                 )
@@ -177,7 +181,7 @@ class ImageViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
                     is_valid -= 1  # Doubt - Is there a better logic for this?
                     self.perform_create(
                         serializer
-                    )  # Doubt - is there any other way to get hold of this data || now using validated_data
+                    ) 
                     validate_data_list.append(serializer.validated_data)
                 else:
                     print("serializer.errors: ", serializer.errors)
@@ -186,7 +190,7 @@ class ImageViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
                     )
 
         if is_valid == 0:
-            detected_symptoms = []
+            detected_symptoms = []  
             print("valid list")
             print(validate_data_list)
             if len(validate_data_list) > 0:

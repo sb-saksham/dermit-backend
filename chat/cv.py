@@ -127,7 +127,6 @@ class ComputerVision:
         print("=" * 100)
         # classes = []
         model = YOLO(self.model_dir, task=self.task)
-        # results = model.predict(source=input_paths_list, conf=self.conf, imgsz=self.imgsz)
         results = model(source=input_paths_list, conf=self.conf, imgsz=self.imgsz)
 
         detected_symptoms = []
